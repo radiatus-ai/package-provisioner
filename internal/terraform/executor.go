@@ -13,6 +13,15 @@ import (
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
 )
 
+type ExecutorInterface interface {
+	CopyTerraformModules(packageType, deployDir string) error
+	CreateParameterFile(msg models.DeploymentMessage, deployDir string) error
+	CreateBackendFile(msg models.DeploymentMessage, deployDir string) error
+	RunTerraformCommands(deployDir string) error
+	ProcessTerraformOutputs(msg models.DeploymentMessage, deployDir string) (map[string]interface{}, error)
+	WriteOutputFile(packageID, deployDir string, outputData map[string]interface{}) error
+}
+
 type Executor struct {
 	cfg *config.Config
 }

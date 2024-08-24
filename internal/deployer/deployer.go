@@ -12,8 +12,9 @@ import (
 )
 
 type Deployer struct {
-	cfg      *config.Config
-	executor *terraform.Executor
+	cfg *config.Config
+	// executor *terraform.Executor
+	executor terraform.ExecutorInterface
 }
 
 func NewDeployer(cfg *config.Config) *Deployer {
