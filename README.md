@@ -15,3 +15,14 @@ gcloud components install pubsub-emulator
 gcloud beta emulators pubsub start --project=your-project-id
 $(gcloud beta emulators pubsub env-init)
 ```
+
+
+```yaml
+# this should be json schema as well, allowing each package to have a dag of composeable steps as well
+plan:
+    - source: pkg 
+      executor: terraform 
+    # - source: pkg-new 
+    #   executor: opentofu 
+    #   generated: true  
+```

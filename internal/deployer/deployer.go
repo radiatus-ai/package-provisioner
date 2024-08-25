@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/radiatus-ai/package-provisioner/internal/config"
-	"github.com/radiatus-ai/package-provisioner/internal/terraform"
+	"github.com/radiatus-ai/package-provisioner/internal/executors/terraform"
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
 )
 
