@@ -64,13 +64,13 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Deploying package: %+v", deploymentMsg)
+	log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
 	if err := s.deployFn(deploymentMsg); err != nil {
 		log.Printf("Error deploying package: %v", err)
 		http.Error(w, "Error processing message", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully deployed package: %s", deploymentMsg.Package.Type)
+	log.Printf("Successfully %s package: %s", deploymentMsg.Action, deploymentMsg.Package.Type)
 	w.WriteHeader(http.StatusOK)
 }

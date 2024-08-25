@@ -57,6 +57,6 @@ func (d *Deployer) DeployPackage(msg models.DeploymentMessage) error {
 		return fmt.Errorf("failed to write output file: %v", err)
 	}
 
-	log.Printf("Deployment completed successfully for package %s in project %s", msg.PackageID, msg.ProjectID)
+	log.Printf("%s completed successfully for package %s in project %s", msg.Action, msg.PackageID, msg.ProjectID)
 	return nil
 }
