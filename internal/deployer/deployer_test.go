@@ -40,6 +40,10 @@ func (m *MockExecutor) WriteOutputFile(packageID, deployDir string, outputData m
 	return afero.WriteFile(m.Fs, "deployments/test-package/output.json", []byte("mocked output"), 0644)
 }
 
+func (m *MockExecutor) PostOutputToAPI(packageID string, outputData map[string]interface{}) error {
+	return nil
+}
+
 func TestDeployer_DeployPackage(t *testing.T) {
 	// Create a mock filesystem
 	mockFs := afero.NewMemMapFs()

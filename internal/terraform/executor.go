@@ -1,10 +1,12 @@
 package terraform
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +21,7 @@ type ExecutorInterface interface {
 	CreateBackendFile(msg models.DeploymentMessage, deployDir string) error
 	RunTerraformCommands(deployDir string, action models.DeploymentAction) error
 	ProcessTerraformOutputs(msg models.DeploymentMessage, deployDir string) (map[string]interface{}, error)
+	PostOutputToAPI(packageID string, outputData map[string]interface{}) error
 	WriteOutputFile(packageID, deployDir string, outputData map[string]interface{}) error
 }
 
@@ -205,6 +208,46 @@ func (e *Executor) WriteOutputFile(packageID, deployDir string, outputData map[s
 		log.Printf("Successfully wrote output file: %s", filePath)
 	}
 	return err
+}
+
+func (e *Executor) PostOutputToAPI(packageID string, outputData map[string]interface{}) error {
+	log.Printf("Posting output data for package: %s to API", packageID)
+
+	apiURL := os.Getenv("API_URL")
+	if apiURL == "" {
+		return fmt.Errorf("API_URL environment variable is not set")
+	}
+
+	jsonData, err := json.Marshal(outputData)
+	if err != nil {
+		log.Printf("Error marshaling output data: %v", err)
+		return err
+	}
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Printf("Error creating HTTP request: %v", err)
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Canvas-Token", os.Getenv("CANVAS_TOKEN"))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error sending HTTP request: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("API request failed with status code: %d", resp.StatusCode)
+		return fmt.Errorf("API request failed with status code: %d", resp.StatusCode)
+	}
+
+	log.Printf("Successfully posted output data for package: %s to API", packageID)
+	return nil
 }
 
 func (e *Executor) runCommand(command, dir string) (string, error) {
