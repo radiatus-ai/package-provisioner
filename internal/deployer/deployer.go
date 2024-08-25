@@ -44,7 +44,7 @@ func (d *Deployer) DeployPackage(msg models.DeploymentMessage) error {
 		return fmt.Errorf("failed to create backend file: %v", err)
 	}
 
-	if err := d.executor.RunTerraformCommands(deployDir); err != nil {
+	if err := d.executor.RunTerraformCommands(deployDir, msg.Action); err != nil {
 		return fmt.Errorf("failed to run terraform commands: %v", err)
 	}
 

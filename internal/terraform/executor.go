@@ -17,7 +17,7 @@ type ExecutorInterface interface {
 	CopyTerraformModules(packageType, deployDir string) error
 	CreateParameterFile(msg models.DeploymentMessage, deployDir string) error
 	CreateBackendFile(msg models.DeploymentMessage, deployDir string) error
-	RunTerraformCommands(deployDir string) error
+	RunTerraformCommands(deployDir string, action models.DeploymentAction) error
 	ProcessTerraformOutputs(msg models.DeploymentMessage, deployDir string) (map[string]interface{}, error)
 	WriteOutputFile(packageID, deployDir string, outputData map[string]interface{}) error
 }
@@ -131,12 +131,20 @@ terraform {
 	return err
 }
 
-func (e *Executor) RunTerraformCommands(deployDir string) error {
-	log.Printf("Running Terraform commands in directory: %s", deployDir)
+func (e *Executor) RunTerraformCommands(deployDir string, action models.DeploymentAction) error {
+	log.Printf("Running Terraform commands in directory: %s for action: %s", deployDir, action)
 	commands := []string{
 		"terraform init",
 		"terraform plan",
-		"terraform apply -auto-approve",
+	}
+
+	// todo: use model enum for this and create an interface for other eexecutor types to adhere to
+	if action == models.ActionDeploy {
+		commands = append(commands, "terraform apply -auto-approve")
+	} else if action == models.ActionDestroy {
+		commands = append(commands, "terraform destroy -auto-approve")
+	} else {
+		return fmt.Errorf("unsupported action: %s", action)
 	}
 
 	for _, cmd := range commands {

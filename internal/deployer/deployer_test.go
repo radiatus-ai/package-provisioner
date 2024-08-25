@@ -28,7 +28,7 @@ func (m *MockExecutor) CreateBackendFile(msg models.DeploymentMessage, deployDir
 	return afero.WriteFile(m.Fs, "deployments/test-package/backend.tf", []byte("mocked backend"), 0644)
 }
 
-func (m *MockExecutor) RunTerraformCommands(deployDir string) error {
+func (m *MockExecutor) RunTerraformCommands(deployDir string, action models.DeploymentAction) error {
 	return nil // Mock implementation
 }
 
@@ -69,6 +69,7 @@ func TestDeployer_DeployPackage(t *testing.T) {
 			Outputs:       map[string]interface{}{"output1": "value1"},
 		},
 		ConnectedInputData: map[string]interface{}{"input1": "value1"},
+		Action:             models.ActionDeploy,
 	}
 
 	err := deployer.DeployPackage(msg)

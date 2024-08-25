@@ -6,9 +6,17 @@ type Package struct {
 	Outputs       map[string]interface{} `json:"outputs"`
 }
 
+type DeploymentAction string
+
+const (
+	ActionDeploy  DeploymentAction = "DEPLOY"
+	ActionDestroy DeploymentAction = "DESTROY"
+)
+
 type DeploymentMessage struct {
 	ProjectID          string                 `json:"project_id"`
 	PackageID          string                 `json:"package_id"`
 	Package            Package                `json:"package"`
 	ConnectedInputData map[string]interface{} `json:"connected_input_data"`
+	Action             DeploymentAction       `json:"action"`
 }
