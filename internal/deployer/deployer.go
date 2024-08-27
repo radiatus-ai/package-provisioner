@@ -40,6 +40,10 @@ func (d *Deployer) DeployPackage(msg models.DeploymentMessage) error {
 		return fmt.Errorf("failed to create parameter file: %v", err)
 	}
 
+	if err := d.executor.CreateSecretsFile(msg, deployDir); err != nil {
+		return fmt.Errorf("failed to create secrets file: %v", err)
+	}
+
 	if err := d.executor.CreateBackendFile(msg, deployDir); err != nil {
 		return fmt.Errorf("failed to create backend file: %v", err)
 	}

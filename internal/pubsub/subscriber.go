@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	// Added import for io
 	"github.com/radiatus-ai/package-provisioner/internal/config"
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
 )
@@ -56,25 +57,24 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Received message ID: %s", pushRequest.Message.ID)
-	log.Printf("Received message data: %s", string(pushRequest.Message.Data))
-
-	var deploymentMsg models.DeploymentMessage
-	if err := json.Unmarshal(pushRequest.Message.Data, &deploymentMsg); err != nil {
-		log.Printf("Error unmarshaling deployment message: %v", err)
-		http.Error(w, "Error processing message", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
-	if err := s.deployFn(deploymentMsg); err != nil {
-		log.Printf("Error deploying package: %v", err)
-		// Return a 500 status to indicate failure and trigger a retry
-		http.Error(w, "Error processing message", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Successfully %s package: %s", deploymentMsg.Action, deploymentMsg.Package.Type)
-	// This 200 OK response serves as the acknowledgment
+	// Acknowledge the message immediately
 	w.WriteHeader(http.StatusOK)
+
+	// Process the message asynchronously
+	go func() {
+		log.Printf("Processing message ID: %s", pushRequest.Message.ID)
+		log.Printf("Received message data: %s", string(pushRequest.Message.Data))
+
+		var deploymentMsg models.DeploymentMessage
+		if err := json.Unmarshal(pushRequest.Message.Data, &deploymentMsg); err != nil {
+			log.Printf("Error unmarshaling deployment message: %v", err)
+			return
+		}
+
+		log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
+		if err := s.deployFn(deploymentMsg); err != nil {
+			log.Printf("Error deploying package: %v", err)
+			// Here you might want to implement your own retry logic or error reporting
+		}
+	}()
 }

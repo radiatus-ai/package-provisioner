@@ -16,6 +16,7 @@ import (
 type ExecutorInterface interface {
 	CopyTerraformModules(packageType, deployDir string) error
 	CreateParameterFile(msg models.DeploymentMessage, deployDir string) error
+	CreateSecretsFile(msg models.DeploymentMessage, deployDir string) error
 	CreateBackendFile(msg models.DeploymentMessage, deployDir string) error
 	RunTerraformCommands(deployDir string, action models.DeploymentAction) error
 	ProcessTerraformOutputs(msg models.DeploymentMessage, deployDir string) (map[string]interface{}, error)
@@ -106,6 +107,30 @@ func (e *Executor) CreateParameterFile(msg models.DeploymentMessage, deployDir s
 		log.Printf("Error creating parameter file: %v", err)
 	} else {
 		log.Printf("Successfully created parameter file: %s", filePath)
+	}
+	return err
+}
+
+func (e *Executor) CreateSecretsFile(msg models.DeploymentMessage, deployDir string) error {
+	log.Printf("Creating secrets file for package: %s in directory: %s", msg.PackageID, deployDir)
+
+	secretsData := make(map[string]interface{})
+	for k, v := range msg.Secrets {
+		var jsonValue interface{}
+		err := json.Unmarshal([]byte(v), &jsonValue)
+		if err != nil {
+			log.Printf("Error unmarshaling secret value for key %s: %v", k, err)
+			jsonValue = v
+		}
+		secretsData[k] = jsonValue
+	}
+
+	filePath := filepath.Join(deployDir, fmt.Sprintf("%s_secrets.auto.tfvars.json", msg.PackageID))
+	err := e.writeJSONFile(filePath, secretsData)
+	if err != nil {
+		log.Printf("Error creating secrets file: %v", err)
+	} else {
+		log.Printf("Successfully created secrets file: %s", filePath)
 	}
 	return err
 }

@@ -24,6 +24,10 @@ func (m *MockExecutor) CreateParameterFile(msg models.DeploymentMessage, deployD
 	return afero.WriteFile(m.Fs, "deployments/test-package/parameters.tfvars", []byte("mocked parameters"), 0644)
 }
 
+func (m *MockExecutor) CreateSecretsFile(msg models.DeploymentMessage, deployDir string) error {
+	return afero.WriteFile(m.Fs, "deployments/test-package/secrets.tfvars", []byte("mocked secrets"), 0644)
+}
+
 func (m *MockExecutor) CreateBackendFile(msg models.DeploymentMessage, deployDir string) error {
 	return afero.WriteFile(m.Fs, "deployments/test-package/backend.tf", []byte("mocked backend"), 0644)
 }
