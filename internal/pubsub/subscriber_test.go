@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"encoding/base64"
+
 	"github.com/radiatus-ai/package-provisioner/internal/config"
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
 )
@@ -21,10 +23,11 @@ func TestSubscriber_HandlePush(t *testing.T) {
 	deploymentCount := 0
 	testDeployFn := func(msg models.DeploymentMessage) error {
 		deploymentCount++
+		t.Logf("Deployment function called with message: %+v", msg)
 		return nil
 	}
 
-	subscriber := NewSubscriber(cfg, testDeployFn)
+	subscriber := NewSubscriber(cfg, testDeployFn, nil)
 
 	// Create a test message
 	testMsg := models.DeploymentMessage{
@@ -36,18 +39,21 @@ func TestSubscriber_HandlePush(t *testing.T) {
 	}
 	msgBytes, _ := json.Marshal(testMsg)
 
+	// Encode the message data as base64
+	encodedData := base64.StdEncoding.EncodeToString(msgBytes)
+
 	// Create a push request
 	pushRequest := struct {
 		Message struct {
-			Data []byte `json:"data,omitempty"`
+			Data string `json:"data"`
 			ID   string `json:"id"`
 		} `json:"message"`
 	}{
 		Message: struct {
-			Data []byte `json:"data,omitempty"`
+			Data string `json:"data"`
 			ID   string `json:"id"`
 		}{
-			Data: msgBytes,
+			Data: encodedData,
 			ID:   "test-message-id",
 		},
 	}
@@ -75,10 +81,13 @@ func TestSubscriber_HandlePush(t *testing.T) {
 	if deploymentCount != 1 {
 		t.Errorf("Expected 1 deployment, got %d", deploymentCount)
 	}
+
+	// Log the response body for debugging
+	t.Logf("Response body: %s", rr.Body.String())
 }
 
 func TestSubscriber_HandlePush_InvalidMethod(t *testing.T) {
-	subscriber := NewSubscriber(&config.Config{}, nil)
+	subscriber := NewSubscriber(&config.Config{}, func(msg models.DeploymentMessage) error { return nil }, nil)
 
 	req, err := http.NewRequest("GET", "/push", nil)
 	if err != nil {
@@ -94,7 +103,7 @@ func TestSubscriber_HandlePush_InvalidMethod(t *testing.T) {
 }
 
 func TestSubscriber_HandlePush_InvalidBody(t *testing.T) {
-	subscriber := NewSubscriber(&config.Config{}, nil)
+	subscriber := NewSubscriber(&config.Config{}, func(msg models.DeploymentMessage) error { return nil }, nil)
 
 	req, err := http.NewRequest("POST", "/push", bytes.NewBufferString("invalid json"))
 	if err != nil {

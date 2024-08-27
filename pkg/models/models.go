@@ -13,6 +13,16 @@ const (
 	ActionDestroy DeploymentAction = "DESTROY"
 )
 
+type DeployStatus string
+
+const (
+	StartDeploy  DeployStatus = "DEPLOYING"
+	StartDestroy DeployStatus = "DESTROYING"
+	Deployed     DeployStatus = "DEPLOYED"
+	Destroyed    DeployStatus = "NOT_DEPLOYED"
+	Failed       DeployStatus = "FAILED"
+)
+
 type DeploymentMessage struct {
 	ProjectID          string                 `json:"project_id"`
 	PackageID          string                 `json:"package_id"`

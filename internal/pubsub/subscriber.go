@@ -11,15 +11,21 @@ import (
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
 )
 
+type Executor interface {
+	PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}, action models.DeployStatus) error
+}
+
 type Subscriber struct {
 	cfg      *config.Config
 	deployFn func(models.DeploymentMessage) error
+	executor Executor // Changed from *Executor to Executor
 }
 
-func NewSubscriber(cfg *config.Config, deployFn func(models.DeploymentMessage) error) *Subscriber {
+func NewSubscriber(cfg *config.Config, deployFn func(models.DeploymentMessage) error, executor Executor) *Subscriber {
 	return &Subscriber{
 		cfg:      cfg,
 		deployFn: deployFn,
+		executor: executor,
 	}
 }
 
@@ -72,7 +78,12 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
 		if err := s.deployFn(deploymentMsg); err != nil {
 			log.Printf("Error deploying package: %v", err)
-			// Here you might want to implement your own retry logic or error reporting
+			errorDeployData := map[string]interface{}{
+				"error": err.Error(),
+			}
+			if postErr := s.executor.PostOutputToAPI(deploymentMsg.ProjectID, deploymentMsg.PackageID, errorDeployData, models.Failed); postErr != nil {
+				log.Printf("Failed to post error to API: %v", postErr)
+			}
 		}
 	}()
 }

@@ -22,7 +22,7 @@ type ExecutorInterface interface {
 	CreateBackendFile(msg models.DeploymentMessage, deployDir string) error
 	RunTerraformCommands(deployDir string, action models.DeploymentAction) error
 	ProcessTerraformOutputs(msg models.DeploymentMessage, deployDir string) (map[string]interface{}, error)
-	PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}) error
+	PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}, action models.DeployStatus) error
 	WriteOutputFile(packageID, deployDir string, outputData map[string]interface{}) error
 }
 
@@ -237,32 +237,29 @@ func (e *Executor) WriteOutputFile(packageID, deployDir string, outputData map[s
 
 // todo: reflect this in the api schema so it's locked down
 type OutputPayload struct {
-	// Name          *string                `json:"name,omitempty"`
-	// Type          *string                `json:"type,omitempty"`
-	// Inputs        map[string]interface{} `json:"inputs,omitempty"`
-	// Outputs       map[string]interface{} `json:"outputs,omitempty"`
-	// Parameters    map[string]interface{} `json:"parameters,omitempty"`
 	DeployStatus *string                `json:"deploy_status,omitempty"`
 	OutputData   map[string]interface{} `json:"output_data,omitempty"`
-	// ParameterData map[string]interface{} `json:"parameter_data,omitempty"`
+	// errors and logs are added to the output data, which we will add a struct for shortly
+	// ErrorMessage string                 `json:"error_message,omitempty"`
 }
 
 type OutputPayloadBody struct {
 	Package OutputPayload `json:"package"`
 }
 
-func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}) error {
-	log.Printf("Posting output data for package: %s to API", packageID)
+func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}, action models.DeployStatus) error {
+	url := fmt.Sprintf("%s/provisioner/projects/%s/packages/%s", e.cfg.APIURL, projectID, packageID)
+	log.Printf("Posting output data for package: %s to API", url)
 
 	apiURL := e.cfg.APIURL
 	if apiURL == "" {
 		return fmt.Errorf("API_URL environment variable is not set")
 	}
 
-	deployedStatus := "DEPLOYED"
+	deployStatus := string(action)
 	payload := OutputPayloadBody{
 		Package: OutputPayload{
-			DeployStatus: &deployedStatus,
+			DeployStatus: &deployStatus,
 			OutputData:   outputData,
 		},
 	}
@@ -272,13 +269,13 @@ func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputDat
 		return fmt.Errorf("error marshaling output data: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/provisioner/projects/%s/packages/%s", e.cfg.APIURL, projectID, packageID), bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("error creating HTTP request: %v", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Canvas-Token", e.cfg.CanvasToken)
+	req.Header.Set("x-canvas-token", e.cfg.CanvasToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -291,7 +288,7 @@ func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputDat
 		return fmt.Errorf("API request failed with status code: %d", resp.StatusCode)
 	}
 
-	log.Printf("Successfully posted output data for package: %s to API", packageID)
+	log.Printf("Successfully patched output data for package: %s to API", packageID)
 	return nil
 }
 

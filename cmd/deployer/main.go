@@ -23,7 +23,7 @@ func main() {
 	deployer := deployer.NewDeployer(cfg)
 	log.Printf("Deployer initialized")
 
-	subscriber := pubsub.NewSubscriber(cfg, deployer.DeployPackage)
+	subscriber := pubsub.NewSubscriber(cfg, deployer.DeployPackage, deployer)
 	log.Printf("Subscriber initialized")
 
 	// Set up HTTP server
