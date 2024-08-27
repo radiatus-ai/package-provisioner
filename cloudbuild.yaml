@@ -1,0 +1,30 @@
+# todo: add generating this file to ada cli.
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'build-api'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest', '-f', './Dockerfile', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'push-api'
+  waitFor: ['build-api']
+  args: ['push', 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest']
+
+
+images:
+- 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest'
+
+
+# for later, maybe 
+# # Deploy container image to Cloud Run
+# - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+#   entrypoint: gcloud
+#   args:
+#   - 'run'
+#   - 'deploy'
+#   - 'ui'
+#   - '--image'
+#   - 'gcr.io/$PROJECT_ID/ui:$COMMIT_SHA'
+#   - '--region'
+#   - 'us-central1'
+#   - '--platform'
+#   - 'managed'
