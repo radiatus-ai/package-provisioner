@@ -19,4 +19,5 @@ type DeploymentMessage struct {
 	Package            Package                `json:"package"`
 	ConnectedInputData map[string]interface{} `json:"connected_input_data"`
 	Action             DeploymentAction       `json:"action"`
+	Secrets            map[string]string      `json:"secrets"`
 }

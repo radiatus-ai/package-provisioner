@@ -45,7 +45,9 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 		Message struct {
 			Data []byte `json:"data,omitempty"`
 			ID   string `json:"id"`
+			Ack  string `json:"ack_id,omitempty"`
 		} `json:"message"`
+		Subscription string `json:"subscription"`
 	}
 
 	if err := json.Unmarshal(body, &pushRequest); err != nil {
@@ -67,10 +69,12 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
 	if err := s.deployFn(deploymentMsg); err != nil {
 		log.Printf("Error deploying package: %v", err)
+		// Return a 500 status to indicate failure and trigger a retry
 		http.Error(w, "Error processing message", http.StatusInternalServerError)
 		return
 	}
 
 	log.Printf("Successfully %s package: %s", deploymentMsg.Action, deploymentMsg.Package.Type)
+	// This 200 OK response serves as the acknowledgment
 	w.WriteHeader(http.StatusOK)
 }
