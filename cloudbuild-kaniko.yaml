@@ -1,0 +1,7 @@
+# todo: add generating this file to ada cli.
+steps:
+- name: 'gcr.io/kaniko-project/executor:latest'
+  args:
+  - --destination=us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:$SHORT_SHA
+  - --cache=true
+  - --cache-ttl=10h

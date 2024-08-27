@@ -1,0 +1,44 @@
+name: Dialogflow Page
+type: colab/dialogflow-page
+
+parameters:
+  type: object
+  properties:
+    name:
+      type: string
+      title: Name
+    description:
+      type: string
+      title: Description
+
+inputs:
+  type: object
+  properties:
+    agent:
+      # type: colab/dataflow-agent
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    page:
+      # type: colab/dataflow-page
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+outputs:
+  type: object
+  properties:
+    page:
+      # type: colab/dataflow-page
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string

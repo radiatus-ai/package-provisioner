@@ -1,0 +1,37 @@
+name: GCP Subnetwork
+type: gcp/subnet
+
+parameters:
+  type: object
+  properties:
+    name:
+      type: string
+      title: Name
+    region:
+      type: string
+      title: Region
+    cidr:
+      type: string
+      title: CIDR Block
+  required:
+    - name
+    - region
+    - cidr
+
+inputs:
+  type: object
+  properties:
+    network:
+      type: object
+      properties:
+        id:
+          type: string
+
+outputs:
+  type: object
+  properties:
+    subnet:
+      type: object
+      properties:
+        id:
+          type: string

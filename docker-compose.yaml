@@ -1,0 +1,6 @@
+services:
+  provisioner-deploy:
+    platform: linux/amd64
+    build:
+      dockerfile: ./Dockerfile
+      context: .

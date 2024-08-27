@@ -1,0 +1,56 @@
+name: Github Team
+type: radiatus/gh-team
+
+parameters:
+  type: object
+  properties:
+    name:
+      type: string
+      title: Name
+    description:
+      type: string
+      title: Description
+    privacy:
+      type: string
+      title: Privacy
+      default: closed
+      oneOf:
+        - const: closed
+          title: Internal
+        - const: private
+          title: Private
+    members:
+      type: array
+      title: Members
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          github:
+            type: string
+
+  required:
+    - name
+    - description
+    - privacy
+
+inputs:
+  type: object
+  properties:
+    organization:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+outputs:
+  type: object
+  properties:
+    team:
+      type: object
+      properties:
+        id:
+          type: string

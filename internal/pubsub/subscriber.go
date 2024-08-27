@@ -6,19 +6,26 @@ import (
 	"log"
 	"net/http"
 
+	// Added import for io
 	"github.com/radiatus-ai/package-provisioner/internal/config"
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
 )
 
+type Executor interface {
+	PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}, action models.DeployStatus) error
+}
+
 type Subscriber struct {
 	cfg      *config.Config
 	deployFn func(models.DeploymentMessage) error
+	executor Executor // Changed from *Executor to Executor
 }
 
-func NewSubscriber(cfg *config.Config, deployFn func(models.DeploymentMessage) error) *Subscriber {
+func NewSubscriber(cfg *config.Config, deployFn func(models.DeploymentMessage) error, executor Executor) *Subscriber {
 	return &Subscriber{
 		cfg:      cfg,
 		deployFn: deployFn,
+		executor: executor,
 	}
 }
 
@@ -39,13 +46,13 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	log.Printf("Received raw body: %s", string(body))
-
 	var pushRequest struct {
 		Message struct {
 			Data []byte `json:"data,omitempty"`
 			ID   string `json:"id"`
+			Ack  string `json:"ack_id,omitempty"`
 		} `json:"message"`
+		Subscription string `json:"subscription"`
 	}
 
 	if err := json.Unmarshal(body, &pushRequest); err != nil {
@@ -54,23 +61,31 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Received message ID: %s", pushRequest.Message.ID)
-	log.Printf("Received message data: %s", string(pushRequest.Message.Data))
-
-	var deploymentMsg models.DeploymentMessage
-	if err := json.Unmarshal(pushRequest.Message.Data, &deploymentMsg); err != nil {
-		log.Printf("Error unmarshaling deployment message: %v", err)
-		http.Error(w, "Error processing message", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("Deploying package: %+v", deploymentMsg)
-	if err := s.deployFn(deploymentMsg); err != nil {
-		log.Printf("Error deploying package: %v", err)
-		http.Error(w, "Error processing message", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Successfully deployed package: %s", deploymentMsg.Package.Type)
+	// Acknowledge the message immediately
 	w.WriteHeader(http.StatusOK)
+
+	// Process the message asynchronously
+	go func() {
+		log.Printf("Processing message ID: %s", pushRequest.Message.ID)
+		log.Printf("Received message data: %.100s", string(pushRequest.Message.Data))
+
+		var deploymentMsg models.DeploymentMessage
+		if err := json.Unmarshal(pushRequest.Message.Data, &deploymentMsg); err != nil {
+			log.Printf("Error unmarshaling deployment message: %v", err)
+			return
+		}
+
+		// don't print the deploymentMsg, it has secrets
+		// log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
+		log.Printf("%s package: %s", deploymentMsg.Action, deploymentMsg.PackageID)
+		if err := s.deployFn(deploymentMsg); err != nil {
+			log.Printf("Error deploying package: %v", err)
+			errorDeployData := map[string]interface{}{
+				"error": err.Error(),
+			}
+			if postErr := s.executor.PostOutputToAPI(deploymentMsg.ProjectID, deploymentMsg.PackageID, errorDeployData, models.Failed); postErr != nil {
+				log.Printf("Failed to post error to API: %v", postErr)
+			}
+		}
+	}()
 }

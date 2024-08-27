@@ -20,3 +20,32 @@ upload:
 					--region=us-central1 \
 					--project=rad-dev-canvas-kwm6 \
 					&& gcloud run services update-traffic provisioner --to-latest --region us-central1 --project=rad-dev-canvas-kwm6
+
+
+# it's incredible how easy it was to set this up.
+# should have done this forever ago.
+build-cloudbuild:
+	gcloud builds submit --project=rad-containers-hmed --config=cloudbuild.yaml .
+
+build-cloudbuild-kaniko:
+# gcloud config set builds/use_kaniko True
+# $(eval export SHORT_SHA=$(shell git rev-parse --short HEAD))
+	$(eval export SHORT_SHA=$(shell openssl rand -hex 3))
+	gcloud builds submit --project=rad-containers-hmed --config=cloudbuild-kaniko.yaml --substitutions=SHORT_SHA=$(SHORT_SHA) .
+
+deploy-cloudbuild: build-cloudbuild
+	kubectl delete pods --selector=app=provisioner
+# gcloud run deploy provisioner \
+# 	--image=us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest \
+# 	--execution-environment=gen2 \
+# 	--region=us-central1 \
+# 	--project=rad-dev-canvas-kwm6 \
+# 	&& gcloud run services update-traffic provisioner --to-latest --region us-central1 --project=rad-dev-canvas-kwm6
+
+deploy-cloudbuild-kaniko: build-cloudbuild-kaniko
+	kubectl set image deployment/provisioner provisioner=us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:$(SHORT_SHA)
+	kubectl rollout status deployment/provisioner
+
+# # Optional: Add a separate target for rollback if needed
+# rollback-provisioner:
+# 	kubectl rollout undo deployment/provisioner

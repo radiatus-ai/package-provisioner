@@ -1,7 +1,10 @@
 FROM golang:1.22-alpine AS builder
 
 # Install git and SSH client
-RUN apk add --no-cache git openssh-client
+RUN apk add --no-cache \
+bash \
+    git \
+    openssh-client
 
 # Install Terraform
 RUN apk add --no-cache curl \
@@ -12,6 +15,10 @@ RUN apk add --no-cache curl \
 
 # Set the working directory
 WORKDIR /app
+
+RUN echo "Installing providers"
+COPY cache-providers.sh cache-providers.sh
+RUN ./cache-providers.sh
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./
@@ -33,9 +40,12 @@ RUN apk add --no-cache ca-certificates git openssh-client
 
 # Copy Terraform from the builder stage
 COPY --from=builder /usr/local/bin/terraform /usr/local/bin/terraform
+COPY --from=builder /root/.terraform.d/plugins /root/.terraform.d/plugins
 
 # Copy the built application from the builder stage
 COPY --from=builder /app/main /app/main
+
+ADD terraform-modules /app/terraform-modules
 
 # Set the working directory
 WORKDIR /app

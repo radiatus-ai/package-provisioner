@@ -1,10 +1,12 @@
 package terraform
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +14,17 @@ import (
 	"github.com/radiatus-ai/package-provisioner/internal/config"
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
 )
+
+type ExecutorInterface interface {
+	CopyTerraformModules(packageType, deployDir string) error
+	CreateParameterFile(msg models.DeploymentMessage, deployDir string) error
+	CreateSecretsFile(msg models.DeploymentMessage, deployDir string) error
+	CreateBackendFile(msg models.DeploymentMessage, deployDir string) error
+	RunTerraformCommands(deployDir string, action models.DeploymentAction) error
+	ProcessTerraformOutputs(msg models.DeploymentMessage, deployDir string) (map[string]interface{}, error)
+	PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}, action models.DeployStatus) error
+	WriteOutputFile(packageID, deployDir string, outputData map[string]interface{}) error
+}
 
 type Executor struct {
 	cfg *config.Config
@@ -100,6 +113,30 @@ func (e *Executor) CreateParameterFile(msg models.DeploymentMessage, deployDir s
 	return err
 }
 
+func (e *Executor) CreateSecretsFile(msg models.DeploymentMessage, deployDir string) error {
+	log.Printf("Creating secrets file for package: %s in directory: %s", msg.PackageID, deployDir)
+
+	secretsData := make(map[string]interface{})
+	for k, v := range msg.Secrets {
+		var jsonValue interface{}
+		err := json.Unmarshal([]byte(v), &jsonValue)
+		if err != nil {
+			log.Printf("Error unmarshaling secret value for key %s: %v", k, err)
+			jsonValue = v
+		}
+		secretsData[k] = jsonValue
+	}
+
+	filePath := filepath.Join(deployDir, fmt.Sprintf("%s_secrets.auto.tfvars.json", msg.PackageID))
+	err := e.writeJSONFile(filePath, secretsData)
+	if err != nil {
+		log.Printf("Error creating secrets file: %v", err)
+	} else {
+		log.Printf("Successfully created secrets file: %s", filePath)
+	}
+	return err
+}
+
 func (e *Executor) CreateBackendFile(msg models.DeploymentMessage, deployDir string) error {
 	log.Printf("Creating backend file for package: %s in directory: %s", msg.PackageID, deployDir)
 	prefix := fmt.Sprintf("projects/%s/packages/%s", msg.ProjectID, msg.PackageID)
@@ -122,12 +159,20 @@ terraform {
 	return err
 }
 
-func (e *Executor) RunTerraformCommands(deployDir string) error {
-	log.Printf("Running Terraform commands in directory: %s", deployDir)
+func (e *Executor) RunTerraformCommands(deployDir string, action models.DeploymentAction) error {
+	log.Printf("Running Terraform commands in directory: %s for action: %s", deployDir, action)
 	commands := []string{
 		"terraform init",
 		"terraform plan",
-		"terraform apply -auto-approve",
+	}
+
+	// todo: use model enum for this and create an interface for other eexecutor types to adhere to
+	if action == models.ActionDeploy {
+		commands = append(commands, "terraform apply -auto-approve")
+	} else if action == models.ActionDestroy {
+		commands = append(commands, "terraform destroy -auto-approve")
+	} else {
+		return fmt.Errorf("unsupported action: %s", action)
 	}
 
 	for _, cmd := range commands {
@@ -188,6 +233,60 @@ func (e *Executor) WriteOutputFile(packageID, deployDir string, outputData map[s
 		log.Printf("Successfully wrote output file: %s", filePath)
 	}
 	return err
+}
+
+// todo: move this to rad-labs
+type OutputPayloadBody struct {
+	DeployStatus *string                `json:"deploy_status,omitempty"`
+	OutputData   map[string]interface{} `json:"output_data,omitempty"`
+	// errors and logs are added to the output data, which we will add a struct for shortly
+	// ErrorMessage string                 `json:"error_message,omitempty"`
+}
+
+func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}, action models.DeployStatus) error {
+	url := fmt.Sprintf("%s/provisioner/projects/%s/packages/%s", e.cfg.APIURL, projectID, packageID)
+	log.Printf("Posting output data for package: %s to API", url)
+
+	apiURL := e.cfg.APIURL
+	if apiURL == "" {
+		return fmt.Errorf("API_URL environment variable is not set")
+	}
+
+	deployStatus := string(action)
+	payload := OutputPayloadBody{
+		DeployStatus: &deployStatus,
+		OutputData:   outputData,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("error marshaling output data: %v", err)
+	}
+	log.Printf("JSON payload: %s", string(jsonData))
+
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("error creating HTTP request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-canvas-token", e.cfg.CanvasToken)
+	log.Printf("Using Canvas Token: %s", e.cfg.CanvasToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+	log.Printf("Response status: %s", resp.Status)
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API request failed with status code: %d", resp.StatusCode)
+	}
+
+	log.Printf("Successfully patched output data for package: %s to API", packageID)
+	return nil
 }
 
 func (e *Executor) runCommand(command, dir string) (string, error) {
