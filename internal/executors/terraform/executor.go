@@ -235,16 +235,12 @@ func (e *Executor) WriteOutputFile(packageID, deployDir string, outputData map[s
 	return err
 }
 
-// todo: reflect this in the api schema so it's locked down
-type OutputPayload struct {
+// todo: move this to rad-labs
+type OutputPayloadBody struct {
 	DeployStatus *string                `json:"deploy_status,omitempty"`
 	OutputData   map[string]interface{} `json:"output_data,omitempty"`
 	// errors and logs are added to the output data, which we will add a struct for shortly
 	// ErrorMessage string                 `json:"error_message,omitempty"`
-}
-
-type OutputPayloadBody struct {
-	Package OutputPayload `json:"package"`
 }
 
 func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}, action models.DeployStatus) error {
@@ -258,16 +254,15 @@ func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputDat
 
 	deployStatus := string(action)
 	payload := OutputPayloadBody{
-		Package: OutputPayload{
-			DeployStatus: &deployStatus,
-			OutputData:   outputData,
-		},
+		DeployStatus: &deployStatus,
+		OutputData:   outputData,
 	}
 
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling output data: %v", err)
 	}
+	log.Printf("JSON payload: %s", string(jsonData))
 
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -276,6 +271,7 @@ func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputDat
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-canvas-token", e.cfg.CanvasToken)
+	log.Printf("Using Canvas Token: %s", e.cfg.CanvasToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -283,6 +279,7 @@ func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputDat
 		return fmt.Errorf("error sending HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
+	log.Printf("Response status: %s", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API request failed with status code: %d", resp.StatusCode)

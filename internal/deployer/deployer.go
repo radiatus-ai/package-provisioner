@@ -26,8 +26,14 @@ func NewDeployer(cfg *config.Config) *Deployer {
 
 func (d *Deployer) DeployPackage(msg models.DeploymentMessage) error {
 	log.Printf("Starting deployment for package %s in project %s", msg.PackageID, msg.ProjectID)
-	var startDeployData = map[string]interface{}{}
-	if err := d.executor.PostOutputToAPI(msg.ProjectID, msg.PackageID, startDeployData, models.StartDeploy); err != nil {
+	var startData = map[string]interface{}{}
+	var startStatus models.DeployStatus
+	if msg.Action == models.ActionDestroy {
+		startStatus = models.StartDestroy
+	} else {
+		startStatus = models.StartDeploy
+	}
+	if err := d.executor.PostOutputToAPI(msg.ProjectID, msg.PackageID, startData, startStatus); err != nil {
 		return fmt.Errorf("failed to post to api: %v", err)
 	}
 
@@ -65,7 +71,13 @@ func (d *Deployer) DeployPackage(msg models.DeploymentMessage) error {
 		return fmt.Errorf("failed to write output file: %v", err)
 	}
 
-	if err := d.executor.PostOutputToAPI(msg.ProjectID, msg.PackageID, outputData, models.Deployed); err != nil {
+	var endStatus models.DeployStatus
+	if msg.Action == models.ActionDestroy {
+		endStatus = models.Destroyed
+	} else {
+		endStatus = models.Deployed
+	}
+	if err := d.executor.PostOutputToAPI(msg.ProjectID, msg.PackageID, outputData, endStatus); err != nil {
 		return fmt.Errorf("failed to post to api: %v", err)
 	}
 

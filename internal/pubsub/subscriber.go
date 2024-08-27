@@ -75,7 +75,9 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
+		// don't print the deploymentMsg, it has secrets
+		// log.Printf("%s package: %+v", deploymentMsg.Action, deploymentMsg)
+		log.Printf("%s package: %s", deploymentMsg.Action, deploymentMsg.PackageID)
 		if err := s.deployFn(deploymentMsg); err != nil {
 			log.Printf("Error deploying package: %v", err)
 			errorDeployData := map[string]interface{}{
