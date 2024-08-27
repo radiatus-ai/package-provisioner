@@ -25,12 +25,14 @@ upload:
 # it's incredible how easy it was to set this up.
 # should have done this forever ago.
 build-cloudbuild:
+# gcloud config set builds/use_kaniko True
 	gcloud builds submit --project=rad-containers-hmed --config=cloudbuild.yaml .
 
 deploy-cloudbuild: build-cloudbuild
-	gcloud run deploy provisioner \
-		--image=us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest \
-		--execution-environment=gen2 \
-		--region=us-central1 \
-		--project=rad-dev-canvas-kwm6 \
-		&& gcloud run services update-traffic provisioner --to-latest --region us-central1 --project=rad-dev-canvas-kwm6
+	kubectl delete pods --selector=app=provisioner
+# gcloud run deploy provisioner \
+# 	--image=us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest \
+# 	--execution-environment=gen2 \
+# 	--region=us-central1 \
+# 	--project=rad-dev-canvas-kwm6 \
+# 	&& gcloud run services update-traffic provisioner --to-latest --region us-central1 --project=rad-dev-canvas-kwm6
