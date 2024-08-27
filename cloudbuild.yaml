@@ -1,25 +1,18 @@
 # todo: add generating this file to ada cli.
-# steps:
-# - name: 'gcr.io/cloud-builders/docker'
-#   id: 'build-api'
-#   args: ['build', '-t', 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest', '-f', './Dockerfile', '.']
-
-# - name: 'gcr.io/cloud-builders/docker'
-#   id: 'push-api'
-#   waitFor: ['build-api']
-#   args: ['push', 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest']
-
-
-# images:
-# - 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest'
-
-
 steps:
-- name: 'gcr.io/kaniko-project/executor:latest'
-  args:
-  - --destination=us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest
-  - --cache=true
-  - --cache-ttl=10h
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'build-api'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest', '-f', './Dockerfile', '.']
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'push-api'
+  waitFor: ['build-api']
+  args: ['push', 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest']
+
+
+images:
+- 'us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest'
+
 
 # for later, maybe 
 # # Deploy container image to Cloud Run
