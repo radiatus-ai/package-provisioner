@@ -37,6 +37,8 @@ COPY --from=builder /usr/local/bin/terraform /usr/local/bin/terraform
 # Copy the built application from the builder stage
 COPY --from=builder /app/main /app/main
 
+ADD terraform-modules /app/terraform-modules
+
 # Set the working directory
 WORKDIR /app
 

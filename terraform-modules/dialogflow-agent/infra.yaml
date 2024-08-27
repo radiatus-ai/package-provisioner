@@ -1,0 +1,27 @@
+name: Dialogflow Agent
+type: colab/dialogflow-agent
+
+parameters:
+  type: object
+  properties:
+    name:
+      type: string
+      title: Name
+    description:
+      type: string
+      title: Description
+
+inputs:
+  type: object
+  properties: {}
+
+outputs:
+  type: object
+  properties:
+    agent:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string

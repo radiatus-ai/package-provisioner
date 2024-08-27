@@ -1,0 +1,29 @@
+name: Cloud Run
+type: gcp/cloud-run
+
+parameters:
+  type: object
+  properties:
+    name:
+      type: string
+      title: Name
+    region:
+      type: string
+      title: Region
+      default: us
+
+  required:
+    - name
+
+inputs:
+  type: object
+  properties:
+    network:
+      type: object
+      properties:
+        id:
+          type: string
+
+outputs:
+  type: object
+  properties: {}

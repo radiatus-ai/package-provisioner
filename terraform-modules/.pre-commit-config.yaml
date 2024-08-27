@@ -1,0 +1,5 @@
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.74.0 # Use the latest version available
+    hooks:
+      - id: terraform_fmt
