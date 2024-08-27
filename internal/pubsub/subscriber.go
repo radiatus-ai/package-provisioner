@@ -40,8 +40,6 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	log.Printf("Received raw body: %s", string(body))
-
 	var pushRequest struct {
 		Message struct {
 			Data []byte `json:"data,omitempty"`
@@ -63,7 +61,7 @@ func (s *Subscriber) HandlePush(w http.ResponseWriter, r *http.Request) {
 	// Process the message asynchronously
 	go func() {
 		log.Printf("Processing message ID: %s", pushRequest.Message.ID)
-		log.Printf("Received message data: %s", string(pushRequest.Message.Data))
+		log.Printf("Received message data: %.100s", string(pushRequest.Message.Data))
 
 		var deploymentMsg models.DeploymentMessage
 		if err := json.Unmarshal(pushRequest.Message.Data, &deploymentMsg); err != nil {

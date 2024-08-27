@@ -44,7 +44,7 @@ func (m *MockExecutor) WriteOutputFile(packageID, deployDir string, outputData m
 	return afero.WriteFile(m.Fs, "deployments/test-package/output.json", []byte("mocked output"), 0644)
 }
 
-func (m *MockExecutor) PostOutputToAPI(packageID string, outputData map[string]interface{}) error {
+func (m *MockExecutor) PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}) error {
 	return nil
 }
 

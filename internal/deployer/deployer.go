@@ -61,7 +61,7 @@ func (d *Deployer) DeployPackage(msg models.DeploymentMessage) error {
 		return fmt.Errorf("failed to write output file: %v", err)
 	}
 
-	if err := d.executor.PostOutputToAPI(msg.PackageID, outputData); err != nil {
+	if err := d.executor.PostOutputToAPI(msg.ProjectID, msg.PackageID, outputData); err != nil {
 		return fmt.Errorf("failed to write output file: %v", err)
 	}
 

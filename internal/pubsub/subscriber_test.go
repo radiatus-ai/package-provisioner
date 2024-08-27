@@ -29,6 +29,7 @@ func TestSubscriber_HandlePush(t *testing.T) {
 	// Create a test message
 	testMsg := models.DeploymentMessage{
 		ProjectID: "test-project",
+		PackageID: "test-package",
 		Package: models.Package{
 			Type: "test-package",
 		},

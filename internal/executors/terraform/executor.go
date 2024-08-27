@@ -1,10 +1,12 @@
 package terraform
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +22,7 @@ type ExecutorInterface interface {
 	CreateBackendFile(msg models.DeploymentMessage, deployDir string) error
 	RunTerraformCommands(deployDir string, action models.DeploymentAction) error
 	ProcessTerraformOutputs(msg models.DeploymentMessage, deployDir string) (map[string]interface{}, error)
-	PostOutputToAPI(packageID string, outputData map[string]interface{}) error
+	PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}) error
 	WriteOutputFile(packageID, deployDir string, outputData map[string]interface{}) error
 }
 
@@ -233,46 +235,64 @@ func (e *Executor) WriteOutputFile(packageID, deployDir string, outputData map[s
 	return err
 }
 
-// todo: implement this
-func (e *Executor) PostOutputToAPI(packageID string, outputData map[string]interface{}) error {
+// todo: reflect this in the api schema so it's locked down
+type OutputPayload struct {
+	// Name          *string                `json:"name,omitempty"`
+	// Type          *string                `json:"type,omitempty"`
+	// Inputs        map[string]interface{} `json:"inputs,omitempty"`
+	// Outputs       map[string]interface{} `json:"outputs,omitempty"`
+	// Parameters    map[string]interface{} `json:"parameters,omitempty"`
+	DeployStatus *string                `json:"deploy_status,omitempty"`
+	OutputData   map[string]interface{} `json:"output_data,omitempty"`
+	// ParameterData map[string]interface{} `json:"parameter_data,omitempty"`
+}
+
+type OutputPayloadBody struct {
+	Package OutputPayload `json:"package"`
+}
+
+func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputData map[string]interface{}) error {
 	log.Printf("Posting output data for package: %s to API", packageID)
+
+	apiURL := e.cfg.APIURL
+	if apiURL == "" {
+		return fmt.Errorf("API_URL environment variable is not set")
+	}
+
+	deployedStatus := "DEPLOYED"
+	payload := OutputPayloadBody{
+		Package: OutputPayload{
+			DeployStatus: &deployedStatus,
+			OutputData:   outputData,
+		},
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("error marshaling output data: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/provisioner/projects/%s/packages/%s", e.cfg.APIURL, projectID, packageID), bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("error creating HTTP request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Canvas-Token", e.cfg.CanvasToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API request failed with status code: %d", resp.StatusCode)
+	}
+
+	log.Printf("Successfully posted output data for package: %s to API", packageID)
 	return nil
-
-	// apiURL := os.Getenv("API_URL")
-	// if apiURL == "" {
-	// 	return fmt.Errorf("API_URL environment variable is not set")
-	// }
-
-	// jsonData, err := json.Marshal(outputData)
-	// if err != nil {
-	// 	log.Printf("Error marshaling output data: %v", err)
-	// 	return err
-	// }
-
-	// req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
-	// if err != nil {
-	// 	log.Printf("Error creating HTTP request: %v", err)
-	// 	return err
-	// }
-
-	// req.Header.Set("Content-Type", "application/json")
-	// req.Header.Set("X-Canvas-Token", os.Getenv("CANVAS_TOKEN"))
-
-	// client := &http.Client{}
-	// resp, err := client.Do(req)
-	// if err != nil {
-	// 	log.Printf("Error sending HTTP request: %v", err)
-	// 	return err
-	// }
-	// defer resp.Body.Close()
-
-	// if resp.StatusCode != http.StatusOK {
-	// 	log.Printf("API request failed with status code: %d", resp.StatusCode)
-	// 	return fmt.Errorf("API request failed with status code: %d", resp.StatusCode)
-	// }
-
-	// log.Printf("Successfully posted output data for package: %s to API", packageID)
-	// return nil
 }
 
 func (e *Executor) runCommand(command, dir string) (string, error) {
