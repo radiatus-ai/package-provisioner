@@ -271,7 +271,6 @@ func (e *Executor) PostOutputToAPI(projectID string, packageID string, outputDat
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-canvas-token", e.cfg.CanvasToken)
-	log.Printf("Using Canvas Token: %s", e.cfg.CanvasToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
