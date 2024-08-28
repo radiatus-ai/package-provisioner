@@ -24,9 +24,11 @@ const (
 )
 
 type DeploymentMessage struct {
-	ProjectID          string                 `json:"project_id"`
-	PackageID          string                 `json:"package_id"`
-	Package            Package                `json:"package"`
+	ProjectID string  `json:"project_id"`
+	PackageID string  `json:"package_id"`
+	Package   Package `json:"package"`
+	// i think this is actually the parameter data
+	// and we still need to add the connections
 	ConnectedInputData map[string]interface{} `json:"connected_input_data"`
 	Action             DeploymentAction       `json:"action"`
 	Secrets            map[string]string      `json:"secrets"`
