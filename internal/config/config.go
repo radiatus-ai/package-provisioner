@@ -16,8 +16,8 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		APIURL:         getEnvOrDefault("API_URL", "https://canvas-api.dev.r7ai.net"),
 		CanvasToken:    getEnvOrDefault("CANVAS_TOKEN", "foobar"),
-		ProjectID:      getEnvOrDefault("GOOGLE_CLOUD_PROJECT", "default-project-id"),
-		SubscriptionID: getEnvOrDefault("PUBSUB_SUBSCRIPTION_ID", "default-subscription-id"),
+		ProjectID:      getEnvOrDefault("GOOGLE_CLOUD_PROJECT", "rad-dev-dev"),
+		SubscriptionID: getEnvOrDefault("PUBSUB_SUBSCRIPTION_ID", "provisioner"),
 		BucketName:     getEnvOrDefault("BUCKET_NAME", "rad-provisioner-state-1234"),
 	}
 
