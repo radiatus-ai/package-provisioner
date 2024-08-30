@@ -9,5 +9,7 @@ terraform {
 
 
 provider "google" {
-  project = "rad-dev-canvas-kwm6"
+  project     = var.gcp_authentication.project_id
+  credentials = jsonencode(var.gcp_authentication)
 }
+

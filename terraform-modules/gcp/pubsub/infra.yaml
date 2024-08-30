@@ -1,15 +1,19 @@
-name: Dialogflow Agent
-type: colab/dialogflow-agent
+name: PubSub
+type: gcp/pubsub
 
 parameters:
   type: object
   properties:
-    name:
+    topic_name:
       type: string
-      title: Name
-    description:
+      title: Topic Name
+    message_retention_duration:
       type: string
-      title: Description
+      title: Message Retention Duration
+      default: "86600s"
+  required:
+    - topic_name
+    - message_retention_duration
 
 inputs:
   type: object
@@ -18,7 +22,7 @@ inputs:
 outputs:
   type: object
   properties:
-    agent:
+    topic:
       type: object
       properties:
         id:
