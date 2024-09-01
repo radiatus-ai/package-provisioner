@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/radiatus-ai/package-provisioner/internal/config"
 	"github.com/radiatus-ai/package-provisioner/pkg/models"
@@ -27,49 +29,39 @@ type ExecutorInterface interface {
 }
 
 type Executor struct {
-	cfg *config.Config
+	cfg                  *config.Config
+	terraformModulesPath string
 }
 
 func NewExecutor(cfg *config.Config) *Executor {
 	log.Println("Creating new Terraform Executor")
-	return &Executor{cfg: cfg}
+	return &Executor{
+		cfg:                  cfg,
+		terraformModulesPath: cfg.TerraformModulesPath,
+	}
 }
 
-func (e *Executor) CopyTerraformModules(packageType, deployDir string) error {
-	log.Printf("Copying Terraform modules for package type: %s to deploy directory: %s", packageType, deployDir)
+func (e *Executor) CopyTerraformModules(packageType string, deployDir string) error {
+	sourceDir := e.terraformModulesPath
+	log.Printf("Copying Terraform modules from %s to %s for package type %s", sourceDir, deployDir, packageType)
 
-	// Get the absolute path of the current working directory
-	currentDir, err := os.Getwd()
+	// Construct the full path to the package-specific module
+	sourcePath := filepath.Join(sourceDir, packageType)
+
+	// Check if the source directory exists
+	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+		return fmt.Errorf("source directory does not exist: %s", sourcePath)
+	}
+
+	// Use the cp command to copy the directory
+	cmd := exec.Command("cp", "-R", sourcePath+"/.", deployDir)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to get current working directory: %v", err)
+		return fmt.Errorf("failed to copy terraform modules: %v\nOutput: %s", err, output)
 	}
 
-	sourceDir := filepath.Join(currentDir, "terraform-modules", packageType)
-	log.Printf("Source dir: %s", sourceDir)
-
-	// Ensure the source directory exists
-	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		return fmt.Errorf("source directory does not exist: %s", sourceDir)
-	}
-
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(sourceDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to get relative path: %v", err)
-		}
-
-		destPath := filepath.Join(deployDir, relPath)
-
-		if info.IsDir() {
-			return os.MkdirAll(destPath, os.ModePerm)
-		}
-
-		return copyFile(path, destPath)
-	})
+	log.Printf("Successfully copied Terraform modules to %s", deployDir)
+	return nil
 }
 
 func copyFile(src, dst string) error {
@@ -292,13 +284,37 @@ func (e *Executor) runCommand(command, dir string) (string, error) {
 	log.Printf("Running command: %s in directory: %s", command, dir)
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Dir = dir
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Command failed: %v\nOutput: %s", err, string(output))
-	} else {
-		log.Printf("Command executed successfully")
+		log.Printf("Command failed: %v", err)
+		return "", err
 	}
-	return string(output), err
+
+	// Clean up the output
+	cleanedOutput := cleanTerraformOutput(string(output))
+
+	log.Printf("Command executed successfully")
+	return cleanedOutput, nil
+}
+
+func cleanTerraformOutput(output string) string {
+	// Split output into lines
+	lines := strings.Split(output, "\n")
+
+	var cleanedLines []string
+	for _, line := range lines {
+		// Remove timestamp and other formatting
+		cleanedLine := regexp.MustCompile(`^\[[\d:]+\]\s*`).ReplaceAllString(line, "")
+
+		// Remove empty lines and lines with only whitespace
+		if strings.TrimSpace(cleanedLine) != "" {
+			cleanedLines = append(cleanedLines, cleanedLine)
+		}
+	}
+
+	// Join the cleaned lines back together
+	return strings.Join(cleanedLines, "\n")
 }
 
 func (e *Executor) writeJSONFile(filepath string, data interface{}) error {

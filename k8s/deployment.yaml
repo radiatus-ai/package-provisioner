@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provisioner
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: provisioner
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: provisioner
+      annotations:
+        gke-gcsfuse/volumes: "true"
+    spec:
+      serviceAccountName: provisioner
+      containers:
+        - name: provisioner
+          image: us-central1-docker.pkg.dev/rad-containers-hmed/cloud-canvas/provisioner:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: GOOGLE_CLOUD_PROJECT
+              value: rad-dev-canvas-kwm6
+            - name: BUCKET_NAME
+              value: rad-provisioner-state-1234
+            - name: PUBSUB_SUBSCRIPTION_ID
+              value: test-push
+          volumeMounts:
+            - name: canvas-packages
+              mountPath: /mnt/canvas-packages
+              readOnly: true
+      volumes:
+        - name: canvas-packages
+          persistentVolumeClaim:
+            claimName: gcs-canvas-packages
+          # gcsFuse:
+          #   bucket: "rad-packages-1234"
+          #   options:
+          #     - "--implicit-dirs"
+          #     - "--only-dir=canvas-packages"

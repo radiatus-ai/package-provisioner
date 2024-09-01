@@ -2,7 +2,7 @@ FROM golang:1.22-alpine AS builder
 
 # Install git and SSH client
 RUN apk add --no-cache \
-bash \
+    bash \
     git \
     openssh-client
 
@@ -45,7 +45,8 @@ COPY --from=builder /root/.terraform.d/plugins /root/.terraform.d/plugins
 # Copy the built application from the builder stage
 COPY --from=builder /app/main /app/main
 
-ADD terraform-modules /app/terraform-modules
+# these get mounted using gcs fuse
+# ADD canvas-packages /mnt/canvas-packages
 
 # Set the working directory
 WORKDIR /app

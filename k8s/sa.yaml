@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: provisioner
+  namespace: default
+  annotations:
+    iam.gke.io/gcp-service-account: app-provisioner@rad-dev-canvas-kwm6.iam.gserviceaccount.com
+automountServiceAccountToken: true
