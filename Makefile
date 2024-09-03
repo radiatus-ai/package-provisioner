@@ -2,7 +2,7 @@ test:
 	go test ./...
 
 start-dev:
-	API_URL=http://localhost:8000 GOOGLE_CLOUD_PROJECT=rad-dev-dev go run cmd/deployer/main.go
+	TERRAFORM_MODULES_PATH=/Users/wbeebe/repos/radiatus/canvas-packages API_URL=http://localhost:8000 GOOGLE_CLOUD_PROJECT=rad-dev-dev go run cmd/deployer/main.go
 	
 start:
 	go run cmd/deployer/main.go
